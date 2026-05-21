@@ -1,3 +1,6 @@
+ import './App.css'
+ 
+ 
  function ISSCard(){
   return (
     <div className = "card">
@@ -25,8 +28,12 @@
       <p>20.05.2026</p>
       <ISSCard />
       <MissionBadge />
+      <ISSCard latitude = "42.36" longitude="-71.05" />
+<MissionBadge name = "Artemis II" status="Active" />
+
     </div>
     
    )
  }
+
 
