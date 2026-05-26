@@ -82,16 +82,22 @@ function APOD() {
   )
 }
 
-function Asteroids() {
+function Asteroids({ onDangerDetected }) {
   const [rocks, setRocks] = useState(null)
+
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0]
     fetch(`https://api.nasa.gov/neo/rest/v1/feed?start_date=${today}&end_date=${today}&api_key=Xf5L1imXlGInPcTmHS2CQ5zmYC7oYFrzKLB6YNg9`)
       .then(r => r.json())
       .then(data => {
-        setRocks(data.near_earth_objects[today])
+        const todayRocks = data.near_earth_objects[today];
+        setRocks(todayRocks);
+        const dangerFound = todayRocks.some(rock => rock.is_potentially_hazardous_asteroid === true);
+        if (dangerFound && onDangerDetected) {
+          onDangerDetected(true);
+        }
       })
-  }, [])
+  }, [onDangerDetected])
   return (
     <div className="card">
       <h2>Asteroids Today</h2>
@@ -233,8 +239,8 @@ function HubbleGallery() {
       </p>
       <div className="image-gallery-grid">
         {galleryData.map((img) => (
-          <div 
-            key={img.id} 
+          <div
+            key={img.id}
             className="gallery-image-wrapper"
             onClick={() => setSelectedImage(img)}
             style={{ cursor: 'pointer' }}
@@ -250,12 +256,12 @@ function HubbleGallery() {
         <div className="nasa-modal-overlay" onClick={() => setSelectedImage(null)}>
           <div className="nasa-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="close-modal-btn" onClick={() => setSelectedImage(null)}>✕</button>
-            
+
             <div className="modal-body-layout">
               <div className="modal-img-container">
                 <img src={selectedImage.src} alt={selectedImage.title} />
               </div>
-              
+
               <div className="modal-info-sidebar">
                 <span className="nasa-badge">NASA DATA LOG</span>
                 <h3>{selectedImage.title}</h3>
@@ -550,6 +556,27 @@ export default function App() {
 
 
   const [activeTab, setActiveTab] = useState('home');
+  const [hasDanger, setHasDanger] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [savedHighlights, setSavedHighlights] = useState([]);
+  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
+  const handleClipText = () => {
+    const selectedText = window.getSelection().toString().trim();
+
+    if (selectedText.length > 0) {
+      setSavedHighlights([...savedHighlights, selectedText]);
+      if (typeof playSound === 'function') playSound();
+      alert(`Saved to Notebook: "${selectedText.substring(0, 20)}..."`);
+      window.getSelection().removeAllRanges();
+    } else {
+      alert("Please select/highlight some text on the screen first!");
+    }
+  };
+  const handleDeleteHighlight = (indexToDelete) => {
+    const updatedHighlights = savedHighlights.filter((_, index) => index !== indexToDelete);
+    setSavedHighlights(updatedHighlights);
+    if (typeof playSound === 'function') playSound(); // ըստ ցանկության՝ ջնջելու ձայն
+  };
 
   return (
     <>
@@ -557,17 +584,43 @@ export default function App() {
       <div className="app-container">
         <aside className="sidebar">
           <div className="icon" onClick={() => { setActiveTab('home'); playSound(); }}>🏠</div>
+          <div
+            className="icon"
+            onClick={() => { setIsSidebarOpen(!isSidebarOpen); playSound(); }}
+            title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            style={{ fontSize: '1.1rem' }}
+          >
+            {isSidebarOpen ? '◀️' : '▶️'}
+          </div>
+          <div className="icon-container" onClick={() => { setIsNotebookOpen(!isNotebookOpen); playSound(); }}>
+            <div className="icon" title="Research Notebook">📓</div>
+            {savedHighlights.length > 0 && (
+              <span className="badge">{savedHighlights.length}</span>
+            )}
+          </div>
+          <div className="sidebar-radar-wrapper" title={hasDanger ? "ALERT: Orbital Hazard Detected!" : "System Secure"}>
+            <div className={`radar-icon ${hasDanger ? 'radar-danger' : 'radar-secure'}`}>
+              {hasDanger ? '☄️' : '🛰️'}
+            </div>
+            <span className={`radar-label ${hasDanger ? 'label-danger' : 'label-secure'}`}>
+              {hasDanger ? 'WARN' : 'SYS OK'}
+            </span>
+          </div>
         </aside>
         <main className="main-content">
           <div className="dashboard-header">
             <h1>Nune-space-dashboard</h1>
             <p>20.05.2026</p>
           </div>
+          <button className="highlighter-btn" style={{ margin: '20px' }} onClick={handleClipText}>
+            🖍️ Clip Selected Text
+          </button>
+
 
           {activeTab === 'home' ? (
             <div className="cards-grid">
               <ISSTracker />
-              <Asteroids />
+              <Asteroids onDangerDetected={setHasDanger} />
               <PeopleSpace />
               <APOD />
             </div>
@@ -628,7 +681,7 @@ export default function App() {
           )}
         </main>
 
-        <aside className="info-sidebar">
+        <aside className={`info-sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
           <h2>List of other information</h2>
           <ul>
             <li onClick={() => { setActiveTab('asteroid-risk'); playSound(); }}>✦ Asteroid Risk Meter</li>
@@ -644,6 +697,33 @@ export default function App() {
           </ul>
         </aside>
       </div>
+      {isNotebookOpen && (
+        <div className="notebook-modal">
+          <div className="modal-header">
+            <strong>📝 RESEARCH CLIPS</strong>
+            <button className="close-modal-btn" onClick={() => setIsNotebookOpen(false)}>×</button>
+          </div>
+          <div className="modal-content">
+            {savedHighlights.length === 0 ? (
+              <p className="no-notes">No text clipped yet. Use the 🖍️ tool on any page.</p>
+            ) : (
+              savedHighlights.map((text, index) => (
+                <div key={index} className="highlight-item">
+                  <span className="highlight-text">"{text}"</span>
+                  <button
+                    className="delete-clip-btn"
+                    onClick={() => handleDeleteHighlight(index)}
+                    title="Delete clip"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
+
 }
