@@ -577,6 +577,18 @@ export default function App() {
     setSavedHighlights(updatedHighlights);
     if (typeof playSound === 'function') playSound(); // ըստ ցանկության՝ ջնջելու ձայն
   };
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchDatabase = [
+    { title: "🏠 Home Dashboard", tags: "home main iss tracker welcome info", tab: "home" },
+    { title: "☄️ Asteroids Today", tags: "asteroids space rocks danger diameter hazard", tab: "asteroids" },
+    { title: "🪐 Mars Weather & Rover", tags: "mars weather rover photos temperature red planet", tab: "mars" },
+    { title: "📓 Research Notebook", tags: "notes clips highlights saved text", tab: "notebook" } // եթե նոթատետրն էլ ունի իր tab-ը կամ կարող ես հանել
+  ];
+  const filteredResults = searchDatabase.filter(item =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.tags.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
@@ -584,6 +596,9 @@ export default function App() {
       <div className="app-container">
         <aside className="sidebar">
           <div className="icon" onClick={() => { setActiveTab('home'); playSound(); }}>🏠</div>
+          <div className="icon" title="Global Search" onClick={() => { setIsSearchOpen(true); setSearchQuery(''); playSound(); }}>
+            🔍
+          </div>
           <div
             className="icon"
             onClick={() => { setIsSidebarOpen(!isSidebarOpen); playSound(); }}
@@ -720,6 +735,40 @@ export default function App() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+      {isSearchOpen && (
+        <div className="search-backdrop" onClick={() => setIsSearchOpen(false)}>
+          <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Type to search (e.g., Mars, Asteroids...)"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <div className="search-results">
+              {searchQuery.length > 0 && filteredResults.length === 0 ? (
+                <p className="search-no-results">No cosmic data found for "{searchQuery}"</p>
+              ) : (
+                searchQuery.length > 0 && filteredResults.map((result, index) => (
+                  <div
+                    key={index}
+                    className="search-result-item"
+                    onClick={() => {
+                      setActiveTab(result.tab);
+                      setIsSearchOpen(false);
+                      if (typeof playSound === 'function') playSound();
+                    }}
+                  >
+                    <span>{result.title}</span>
+                    <span style={{ color: '#04ade8', fontSize: '0.8rem' }}>Go →</span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
